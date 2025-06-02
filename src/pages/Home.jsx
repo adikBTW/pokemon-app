@@ -5,7 +5,7 @@ const Home = () => {
   const [pokemonData, setPokemonData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('pikachu');
+  const [searchTerm, setSearchTerm] = useState('Pikachu');
 
   useEffect(() => {
     const fetchPokemon = async () => {

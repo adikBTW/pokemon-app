@@ -19,7 +19,6 @@ const Navbar = () => {
 
         <div className="nav-links">
           <Link to="/" className="nav-link">Home</Link>
-          <Link to="/about" className="nav-link">About</Link>
         </div>
       </div>
     </nav>

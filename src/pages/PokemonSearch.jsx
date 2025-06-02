@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import './Home.css'; // Reuse the same styles
+import './Home.css';
 
 const PokemonSearch = () => {
   const { query } = useParams();
