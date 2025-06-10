@@ -81,7 +81,6 @@
   width: 100%;
 }
 
-/* Pokéball styles */
 .pokeball {
   width: 40px;
   height: 40px;
@@ -131,7 +130,6 @@
   box-shadow: 0 0 0 2px white;
 }
 
-/* Mobile responsiveness */
 @media (max-width: 768px) {
   .navbar-container {
     padding: 0 15px;
