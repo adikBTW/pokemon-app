@@ -20,7 +20,7 @@ const Home = () => {
         const names = json.results.map(r => r.name);
         setAllPokemons(names);
       } catch (err) {
-        console.error('Error fetching all Pokémon:', err);
+        console.error('Error loading all Pokémon:', err);
       } finally {
         setLoadingAll(false);
       }
@@ -71,7 +71,7 @@ const Home = () => {
         );
         setEffectiveTypes([...new Set(allEffective)]);
       } catch (err) {
-        console.error('Error fetching effective types:', err);
+        console.error('Error loading effective types:', err);
         setEffectiveTypes([]);
       }
     };
