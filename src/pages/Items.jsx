@@ -129,7 +129,7 @@ const Items = () => {
         )
       }
 
-      {loadingItem && <div className="loading">Loading item details…</div>}
+      {loadingItem && <div className="loading">Loading…</div>}
       {error && <div className="error">Error: {error}</div>}
 
       {itemData && (
