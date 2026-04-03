@@ -26,6 +26,7 @@ const Home = () => {
       .finally(() => setLoadingList(false));
   }, []);
 
+  // Auto-load pokemon from URL param (e.g. when coming from Favorites)
   useEffect(() => {
     const name = searchParams.get('pokemon');
     if (name) {
@@ -34,6 +35,7 @@ const Home = () => {
       setFiltered([]);
       fetchPokemonData(name);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
@@ -76,7 +78,7 @@ const Home = () => {
     setSearchTerm(name);
     fetchPokemonData(name);
     setFiltered([]);
-    inputRef.current?.focus();
+    inputRef.current?.blur();
   };
 
   const handleRandom = () => {
@@ -87,6 +89,9 @@ const Home = () => {
     setFiltered([]);
     fetchPokemonData(randomName);
   };
+
+  const showSuggestions = filtered.length > 0 &&
+    (!pokemonData || searchTerm.toLowerCase() !== pokemonData.name.toLowerCase());
 
   return (
     <div className="home-page">
@@ -112,7 +117,7 @@ const Home = () => {
                 🎲
               </button>
             </div>
-            {filtered.length > 0 && (!pokemonData || searchTerm.toLowerCase() !== pokemonData.name.toLowerCase()) && (
+            {showSuggestions && (
               <ul
                 className="suggestions-list"
                 onMouseEnter={() => { mouseInSuggestions.current = true; }}

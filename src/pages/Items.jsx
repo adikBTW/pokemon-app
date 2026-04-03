@@ -65,11 +65,15 @@ const Items = () => {
   };
 
   const handleSuggestionSelect = (name) => {
+    mouseInSuggestions.current = false;
     setSearchTerm(name);
     fetchItemData(name);
     setFiltered([]);
-    inputRef.current?.focus();
+    inputRef.current?.blur();
   };
+
+  const showSuggestions = filtered.length > 0 &&
+    (!itemData || searchTerm.toLowerCase() !== itemData.name.toLowerCase());
 
   return (
     <div className="items-page">
@@ -93,8 +97,12 @@ const Items = () => {
               />
               <button type="submit" className="search-button">{t.searchButton}</button>
             </div>
-            {filtered.length > 0 && (!itemData || searchTerm.toLowerCase() !== itemData.name.toLowerCase()) && (
-              <ul className="suggestions-list" onMouseEnter={() => { mouseInSuggestions.current = true; }} onMouseLeave={() => { mouseInSuggestions.current = false; }}>
+            {showSuggestions && (
+              <ul
+                className="suggestions-list"
+                onMouseEnter={() => { mouseInSuggestions.current = true; }}
+                onMouseLeave={() => { mouseInSuggestions.current = false; }}
+              >
                 {filtered.map(({ name, imageUrl }) => (
                   <li key={name} className="suggestion-item" onMouseDown={() => handleSuggestionSelect(name)}>
                     <img src={imageUrl} alt={name} className="suggestion-image" />
