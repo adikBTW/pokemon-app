@@ -1,203 +1,141 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useThemeLang } from '../context/ThemeLanguageContext';
+import PokemonCard from '../components/PokemonCard/PokemonCard';
 import './Home.css';
 
 const Home = () => {
+  const { t } = useThemeLang();
+  const [searchParams] = useSearchParams();
   const [allPokemons, setAllPokemons] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [pokemonData, setPokemonData] = useState(null);
-  const [loadingAll, setLoadingAll] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [effectiveTypes, setEffectiveTypes] = useState([]);
   const inputRef = useRef(null);
+  const mouseInSuggestions = useRef(false);
+  const skipNextFilter = useRef(false);
 
   useEffect(() => {
-    const fetchAllPokemons = async () => {
-      try {
-        const resp = await fetch('https://pokeapi.co/api/v2/pokemon?limit=10000');
-        const json = await resp.json();
-        const names = json.results.map(r => r.name);
-        setAllPokemons(names);
-      } catch (err) {
-        console.error('Error fetching all Pokémon:', err);
-      } finally {
-        setLoadingAll(false);
-      }
-    };
-    fetchAllPokemons();
+    fetch('https://pokeapi.co/api/v2/pokemon?limit=10000')
+      .then(r => r.json())
+      .then(json => setAllPokemons(json.results.map(p => p.name)))
+      .catch(err => console.error(err))
+      .finally(() => setLoadingList(false));
   }, []);
 
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    const name = searchParams.get('pokemon');
+    if (name) {
+      skipNextFilter.current = true;
+      setSearchTerm(name);
       setFiltered([]);
-      return;
+      fetchPokemonData(name);
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (skipNextFilter.current) { skipNextFilter.current = false; setFiltered([]); return; }
+    if (!searchTerm.trim()) { setFiltered([]); return; }
     const termLower = searchTerm.toLowerCase();
-    const matches = allPokemons
-      .filter(name => name.includes(termLower))
-      .slice(0, 10);
-    setFiltered(matches);
+    const matches = allPokemons.filter(n => n.includes(termLower)).slice(0, 10);
+    Promise.all(matches.map(async name => {
+      try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        const data = await res.json();
+        return { name, imageUrl: data.sprites.front_default || '' };
+      } catch { return { name, imageUrl: '' }; }
+    })).then(setFiltered);
   }, [searchTerm, allPokemons]);
 
-  const fetchPokemonData = async (term) => {
-    if (!term) return;
+  const fetchPokemonData = async (name) => {
     try {
+      setLoadingDetails(true);
       setError(null);
       setPokemonData(null);
-      setEffectiveTypes([]);
-      setLoading(true);
-      const resp = await fetch(`https://pokeapi.co/api/v2/pokemon/${term.toLowerCase()}`);
-      if (!resp.ok) throw new Error('Pokémon not found');
-      const data = await resp.json();
-      setPokemonData(data);
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+      if (!res.ok) throw new Error('Pokémon not found');
+      setPokemonData(await res.json());
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
-
-  useEffect(() => {
-    const fetchEffectiveTypes = async () => {
-      if (!pokemonData) return;
-      try {
-        const typePromises = pokemonData.types.map(typeInfo =>
-          fetch(`https://pokeapi.co/api/v2/type/${typeInfo.type.name}`).then(res => res.json())
-        );
-        const typesData = await Promise.all(typePromises);
-        const allEffective = typesData.flatMap(type =>
-          type.damage_relations.double_damage_from.map(t => t.name)
-        );
-        setEffectiveTypes([...new Set(allEffective)]);
-      } catch (err) {
-        console.error('Error fetching effective types:', err);
-        setEffectiveTypes([]);
-      }
-    };
-    fetchEffectiveTypes();
-  }, [pokemonData]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const term = e.target.elements.search.value.trim().toLowerCase();
-    if (term) {
-      setSearchTerm(term);
-      fetchPokemonData(term);
-      setFiltered([]);
-    }
+    const term = searchTerm.trim().toLowerCase();
+    if (term) { fetchPokemonData(term); setFiltered([]); }
   };
 
   const handleSuggestionSelect = (name) => {
+    mouseInSuggestions.current = false;
     setSearchTerm(name);
     fetchPokemonData(name);
     setFiltered([]);
     inputRef.current?.focus();
   };
 
-  return (
-    <div className="home">
-      <h2 className="items-title">Pokémon Search</h2>
+  const handleRandom = () => {
+    if (allPokemons.length === 0) return;
+    const randomName = allPokemons[Math.floor(Math.random() * allPokemons.length)];
+    skipNextFilter.current = true;
+    setSearchTerm(randomName);
+    setFiltered([]);
+    fetchPokemonData(randomName);
+  };
 
-      <div className="search-container">
-        {loadingAll ? (
-          <div className="loading">Loading Pokémon list for suggestions…</div>
-        ) : (
-          <form onSubmit={handleSearch} autoComplete="off">
+  return (
+    <div className="home-page">
+      <h2 className="home-title">{t.pokemonSearch}</h2>
+
+      {loadingList ? (
+        <div className="loading">{t.loadingList}</div>
+      ) : (
+        <form onSubmit={handleSearch} autoComplete="off" className="search-form">
+          <div className="search-container">
             <div className="autocomplete-wrapper">
               <input
                 ref={inputRef}
                 type="text"
-                name="search"
-                placeholder="Search for a Pokémon..."
+                placeholder={t.searchPokemon}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="search-input"
-                onBlur={() => setTimeout(() => setFiltered([]), 100)}
+                onBlur={() => { if (!mouseInSuggestions.current) setTimeout(() => setFiltered([]), 100); }}
               />
-              <button type="submit" className="search-button">Search</button>
+              <button type="submit" className="search-button">{t.searchButton}</button>
+              <button type="button" className="random-button" onClick={handleRandom} title={t.randomButton}>
+                🎲
+              </button>
             </div>
-            {filtered.length > 0 && (
-              <ul className="suggestions-list">
-                {filtered.map(name => (
-                  <li
-                    key={name}
-                    className="suggestion-item"
-                    onMouseDown={() => handleSuggestionSelect(name)}
-                  >
-                    <span className="suggestion-name">{name}</span>
+            {filtered.length > 0 && (!pokemonData || searchTerm.toLowerCase() !== pokemonData.name.toLowerCase()) && (
+              <ul
+                className="suggestions-list"
+                onMouseEnter={() => { mouseInSuggestions.current = true; }}
+                onMouseLeave={() => { mouseInSuggestions.current = false; }}
+              >
+                {filtered.map(({ name, imageUrl }) => (
+                  <li key={name} className="suggestion-item" onMouseDown={() => handleSuggestionSelect(name)}>
+                    <img src={imageUrl} alt={name} className="suggestion-image" />
+                    <span>{name}</span>
                   </li>
                 ))}
               </ul>
             )}
-          </form>
-        )}
-      </div>
+          </div>
+        </form>
+      )}
 
-      {loading && <div className="loading">Loading...</div>}
-      {error && <div className="error">Error: {error}</div>}
+      {loadingDetails && <div className="loading">{t.loadingData}</div>}
+      {error && <div className="error">{t.errorPrefix} {error}</div>}
 
       {pokemonData && (
         <div className="pokemon-display">
-          <div className="pokemon-card">
-            <div className="sprite-container">
-              <img
-                src={pokemonData.sprites.other['official-artwork'].front_default || pokemonData.sprites.front_default}
-                alt={pokemonData.name}
-                className="pokemon-sprite"
-              />
-              {(pokemonData.sprites.other['official-artwork'].front_shiny || pokemonData.sprites.front_shiny) && (
-                <img
-                  src={pokemonData.sprites.other['official-artwork'].front_shiny || pokemonData.sprites.front_shiny}
-                  alt={`${pokemonData.name} shiny`}
-                  className="pokemon-sprite shiny"
-                />
-              )}
-            </div>
-
-            <div className="pokemon-info">
-              <h1 className="pokemon-name">{pokemonData.name}</h1>
-              <p className="pokemon-id">#{pokemonData.id.toString().padStart(3, '0')}</p>
-
-              <div className="pokemon-types">
-                {pokemonData.types.map((typeInfo, index) => (
-                  <span key={index} className={`type-badge type-${typeInfo.type.name}`}>
-                    {typeInfo.type.name}
-                  </span>
-                ))}
-              </div>
-
-              <div className="pokemon-stats">
-                {pokemonData.stats.map((stat, idx) => (
-                  <div key={idx} className="stat-row">
-                    <span className="stat-label">{stat.stat.name.replace('-', ' ')}:</span>
-                    <span className="stat-value">{stat.base_stat}</span>
-                  </div>
-                ))}
-                <div className="stat-row">
-                  <span className="stat-label">weight:</span>
-                  <span className="stat-value">{(pokemonData.weight / 10).toFixed(1)} kg</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">height:</span>
-                  <span className="stat-value">{(pokemonData.height / 10).toFixed(1)} m</span>
-                </div>
-              </div>
-
-              {effectiveTypes.length > 0 && (
-                <div className="effective-types">
-                  <h3>Effective types against {pokemonData.name}:</h3>
-                  <div className="type-list">
-                    {effectiveTypes.map((type, idx) => (
-                      <span key={idx} className={`type-badge type-${type}`}>
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <PokemonCard pokemonData={pokemonData} />
         </div>
       )}
     </div>
